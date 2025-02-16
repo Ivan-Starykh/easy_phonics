@@ -122,7 +122,7 @@
         }
 
         async function loadPDF() {
-            const url = 'https://www.dropbox.com/scl/fi/p36zo738omefoj6yzxjdf/Easy-Phonics.pdf?rlkey=qdlsfxo216mstkqgz2dvz5n3w&st=bh4jmod9&?raw=1';
+            const url = 'Easy-Phonics.pdf';
             pdfDoc = await pdfjsLib.getDocument(url).promise;
             document.getElementById('total-pages').textContent = pdfDoc.numPages;
             renderPage(currentPage);
