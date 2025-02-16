@@ -122,7 +122,7 @@
         }
 
         async function loadPDF() {
-            const url = 'Easy-Phonics.pdf';
+            const url = 'https://ivan-starykh.github.io/easy_phonics/Easy-Phonics.pdf';
             pdfDoc = await pdfjsLib.getDocument(url).promise;
             document.getElementById('total-pages').textContent = pdfDoc.numPages;
             renderPage(currentPage);
