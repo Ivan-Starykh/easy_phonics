@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Просмотр PDF</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            background: white;
+        }
+    </style>
+    <script>
+        document.addEventListener('contextmenu', event => event.preventDefault()); // Блокируем правую кнопку
+        document.addEventListener('keydown', event => {
+            if (event.ctrlKey && ['s', 'p', 'u'].includes(event.key.toLowerCase())) {
+                event.preventDefault();
+            }
+        });
+        
+        async function renderPDF() {
+            const url = 'https://drive.google.com/file/d/1dF5a8bABYMLNBDNIx1JxLCUDa_6I8LOy/view?usp=share_link'; // Ссылка на PDF (например, Google Drive Direct Link)
+            const pdf = await pdfjsLib.getDocument(url).promise;
+            const page = await pdf.getPage(1);
+            
+            const canvas = document.getElementById('pdf-canvas');
+            const ctx = canvas.getContext('2d');
+            const viewport = page.getViewport({ scale: 1.5 });
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            
+            await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+        }
+        
+        document.addEventListener("DOMContentLoaded", renderPDF);
+    </script>
+</head>
+<body>
+    <canvas id="pdf-canvas"></canvas>
+</body>
+</html>
