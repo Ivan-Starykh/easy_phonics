@@ -8,43 +8,177 @@
     <style>
         body {
             margin: 0;
-            overflow: hidden;
             background: #333;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
+            justify-content: center;
             height: 100vh;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        .viewer-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            height: 100vh;
+            padding: 10px;
+            box-sizing: border-box;
         }
         canvas {
             background: white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            max-width: 100%;
+            max-height: calc(100vh - 60px);
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        button {
+            padding: 8px 12px;
+            font-size: 16px;
+            cursor: pointer;
+            background: #444;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background: #666;
+        }
+        .login-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        input {
+            padding: 8px;
+            margin: 5px;
+            font-size: 16px;
         }
     </style>
     <script>
-        document.addEventListener('contextmenu', event => event.preventDefault()); // Блокируем правую кнопку
-        document.addEventListener('keydown', event => {
-            if (event.ctrlKey && ['s', 'p', 'u'].includes(event.key.toLowerCase())) {
-                event.preventDefault();
+        const correctUsername = "user";
+        const correctPassword = "password";
+
+        function checkLogin() {
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+            if (username === correctUsername && password === correctPassword) {
+                document.getElementById("login-container").style.display = "none";
+                document.getElementById("viewer-container").style.display = "flex";
+                loadPDF();
+            } else {
+                alert("Неверный логин или пароль");
             }
-        });
-        
-        async function renderPDF() {
-            const url = 'https://drive.google.com/file/d/1dF5a8bABYMLNBDNIx1JxLCUDa_6I8LOy/view?usp=share_link'; // Ссылка на PDF (например, Google Drive Direct Link)
-            const pdf = await pdfjsLib.getDocument(url).promise;
-            const page = await pdf.getPage(1);
-            
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                checkLogin();
+            }
+        }
+
+        let pdfDoc = null;
+        let currentPage = 1;
+        let rendering = false;
+        let renderTask = null;
+
+        async function renderPage(pageNum) {
+            if (rendering) {
+                return;
+            }
+            rendering = true;
+
+            const page = await pdfDoc.getPage(pageNum);
             const canvas = document.getElementById('pdf-canvas');
             const ctx = canvas.getContext('2d');
             const viewport = page.getViewport({ scale: 1.5 });
+
             canvas.width = viewport.width;
             canvas.height = viewport.height;
-            
-            await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+
+            if (renderTask) {
+                renderTask.cancel();
+            }
+
+            renderTask = page.render({ canvasContext: ctx, viewport: viewport });
+
+            try {
+                await renderTask.promise;
+            } catch (error) {
+                if (error.name !== "RenderingCancelledException") {
+                    console.error("Ошибка при рендеринге:", error);
+                }
+            } finally {
+                rendering = false;
+            }
+
+            document.getElementById('page-num').textContent = pageNum;
         }
-        
-        document.addEventListener("DOMContentLoaded", renderPDF);
+
+        async function loadPDF() {
+            const url = 'Easy-Phonics.pdf';
+            pdfDoc = await pdfjsLib.getDocument(url).promise;
+            document.getElementById('total-pages').textContent = pdfDoc.numPages;
+            renderPage(currentPage);
+        }
+
+        function nextPage() {
+            if (currentPage < pdfDoc.numPages) {
+                currentPage++;
+                renderPage(currentPage);
+            }
+        }
+
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                renderPage(currentPage);
+            }
+        }
+
+        function handleKeydown(event) {
+            if (event.key === 'ArrowRight') nextPage();
+            if (event.key === 'ArrowLeft') prevPage();
+        }
+
+        function handleWheel(event) {
+            const canvas = document.getElementById('pdf-canvas');
+            if (canvas.scrollHeight > canvas.clientHeight) {
+                // Если страница увеличена, разрешаем прокрутку
+                return;
+            }
+            // Иначе блокируем прокрутку для смены страницы
+            event.preventDefault();
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            document.addEventListener("keydown", handleKeydown);
+            document.addEventListener("wheel", handleWheel, { passive: false });
+            document.getElementById("username").addEventListener("keypress", handleKeyPress);
+            document.getElementById("password").addEventListener("keypress", handleKeyPress);
+        });
     </script>
 </head>
 <body>
-    <canvas id="pdf-canvas"></canvas>
+    <div id="login-container" class="login-container">
+        <h2>Введите логин и пароль</h2>
+        <input type="text" id="username" placeholder="Логин">
+        <input type="password" id="password" placeholder="Пароль">
+        <button onclick="checkLogin()">Войти</button>
+    </div>
+    <div id="viewer-container" class="viewer-container">
+        <div class="controls">
+            <button onclick="prevPage()">&#9665; Назад</button>
+            <span>Страница <span id="page-num">1</span> из <span id="total-pages">?</span></span>
+            <button onclick="nextPage()">Вперед &#9655;</button>
+        </div>
+        <canvas id="pdf-canvas"></canvas>
+    </div>
 </body>
 </html>
